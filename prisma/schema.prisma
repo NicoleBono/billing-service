@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BudgetStatus {
+  PENDENTE
+  APROVADO
+  REJEITADO
+}
+
+enum PaymentStatus {
+  AGUARDANDO
+  APROVADO
+  FALHOU
+}
+
+model ServiceCatalog {
+  id                   Int          @id @default(autoincrement())
+  name                 String
+  description          String
+  basePrice            Decimal      @db.Decimal(10, 2)
+  estimatedTimeMinutes Int
+  budgetItems          BudgetItem[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model Part {
+  id            Int          @id @default(autoincrement())
+  name          String
+  description   String
+  unitPrice     Decimal      @db.Decimal(10, 2)
+  stockQuantity Int
+  budgetItems   BudgetItem[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Budget {
+  id          Int          @id @default(autoincrement())
+  workOrderId Int          @unique
+  status      BudgetStatus @default(PENDENTE)
+  totalAmount Decimal      @db.Decimal(10, 2) @default(0)
+  sentAt      DateTime?
+  respondedAt DateTime?
+  items       BudgetItem[]
+  payment     Payment?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model BudgetItem {
+  id        Int             @id @default(autoincrement())
+  budgetId  Int
+  serviceId Int?
+  partId    Int?
+  quantity  Int             @default(1)
+  unitPrice Decimal         @db.Decimal(10, 2)
+  budget    Budget          @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  service   ServiceCatalog? @relation(fields: [serviceId], references: [id])
+  part      Part?           @relation(fields: [partId], references: [id])
+}
+
+model Payment {
+  id                    Int           @id @default(autoincrement())
+  budgetId              Int           @unique
+  workOrderId           Int           @unique
+  status                PaymentStatus @default(AGUARDANDO)
+  amount                Decimal       @db.Decimal(10, 2)
+  mercadoPagoId         String?
+  mercadoPagoStatus     String?
+  mercadoPagoPaymentUrl String?
+  paidAt                DateTime?
+  budget                Budget        @relation(fields: [budgetId], references: [id])
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+}

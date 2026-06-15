@@ -1,0 +1,93 @@
+name: CI/CD — Billing Service
+
+on:
+  push:
+    branches: [main, homolog]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Testes & Qualidade
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: billing_service_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3-alpine
+        ports: ["5672:5672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/billing_service_test?schema=public
+      JWT_SECRET: test-secret
+      RABBITMQ_URL: amqp://guest:guest@localhost:5672
+      MERCADOPAGO_ACCESS_TOKEN: TEST-token
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - name: Testes unitários + cobertura
+        run: npm run test:cov
+      - name: BDD
+        run: npm run test:bdd
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  build-push:
+    name: Build & Push Docker
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/homolog' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/billing-service:${{ github.sha }}
+
+  deploy-homolog:
+    name: Deploy Homolog (EKS)
+    needs: build-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/homolog'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - run: aws eks update-kubeconfig --name oficina-cluster --region us-east-1
+      - run: |
+          kubectl set image deployment/billing-service \
+            billing-service=ghcr.io/${{ github.repository_owner }}/billing-service:${{ github.sha }} \
+            -n homolog
+          kubectl rollout status deployment/billing-service -n homolog
