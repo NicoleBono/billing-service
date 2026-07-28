@@ -1,0 +1,51 @@
+services:
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - billing_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:7
+    environment:
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=us5.datadoghq.com
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+      - DD_HOSTNAME=billing-service-local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    ports:
+      - "8127:8126"
+      - "8225:8125/udp"
+
+  api:
+    build: .
+    depends_on:
+      mongo:
+        condition: service_healthy
+      datadog-agent:
+        condition: service_started
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env.docker
+    environment:
+      - DATABASE_URL=mongodb://mongo:27017/billing
+      - DD_AGENT_HOST=datadog-agent
+      - DD_TRACE_AGENT_PORT=8126
+      - DD_DOGSTATSD_PORT=8125
+
+volumes:
+  billing_mongo:

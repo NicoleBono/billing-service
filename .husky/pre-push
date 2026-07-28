@@ -1,0 +1,9 @@
+#!/bin/sh
+
+branch=$(git branch --show-current)
+
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+  echo "❌ Push direto na branch '$branch' não é permitido."
+  echo "   Crie uma branch, abra um Pull Request e faça merge."
+  exit 1
+fi

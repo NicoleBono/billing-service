@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+build/
+
+# tests / coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# env files (NÃO subir)
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# docker
+**/.docker/

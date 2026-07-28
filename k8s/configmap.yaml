@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-config
+  namespace: oficina
+data:
+  PORT: "3000"
+  AWS_REGION: "us-east-1"
+  # Preencher com os outputs saga_topic_arn / saga_queue_urls.billing-service
+  # do `terraform apply` em infra-kubernetes.
+  SAGA_SNS_TOPIC_ARN: ""
+  SAGA_SQS_QUEUE_URL: ""
+  MP_WEBHOOK_URL: "https://<host>/billing/webhooks/mercadopago"
