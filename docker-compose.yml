@@ -12,27 +12,28 @@ services:
       timeout: 3s
       retries: 20
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+  localstack:
+    image: localstack/localstack:3
+    ports: ["4566:4566"]
+    environment:
+      SERVICES: sns,sqs
+      DEFAULT_REGION: us-east-1
 
   api:
     build: .
     depends_on:
       db: { condition: service_healthy }
-      rabbitmq: { condition: service_healthy }
+      localstack: { condition: service_started }
     ports: ["3002:3000"]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/billing_service?schema=public
       JWT_SECRET: changeme
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN}
+      MERCADOPAGO_ACCESS_TOKEN: ${MERCADOPAGO_ACCESS_TOKEN:-TEST-fake-token}
       APP_URL: http://localhost:3002
       NODE_ENV: production
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_ENDPOINT_URL: http://localstack:4566
+      SAGA_SNS_TOPIC_ARN: ${SAGA_SNS_TOPIC_ARN:-arn:aws:sns:us-east-1:000000000000:oficina-saga-events}
+      SAGA_SQS_QUEUE_URL: ${SAGA_SQS_QUEUE_URL:-http://localstack:4566/000000000000/billing-saga-queue}

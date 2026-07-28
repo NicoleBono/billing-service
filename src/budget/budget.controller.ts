@@ -15,20 +15,6 @@ export class BudgetController {
     return this.service.findByWorkOrder(+workOrderId);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
-  @Post(':workOrderId/approve')
-  approve(@Param('workOrderId') workOrderId: string) {
-    return this.service.approve(+workOrderId);
-  }
-
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
-  @Post(':workOrderId/reject')
-  reject(@Param('workOrderId') workOrderId: string) {
-    return this.service.reject(+workOrderId);
-  }
-
   @Post('webhook/mercadopago')
   async webhook(@Body() body: { data: { id: string }; type: string }) {
     if (body.type === 'payment') {
