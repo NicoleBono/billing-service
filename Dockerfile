@@ -12,9 +12,7 @@ WORKDIR /usr/src/app
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 COPY prisma ./prisma
-RUN npm pkg delete scripts.prepare && npm install --legacy-peer-deps --omit=dev
+RUN npm pkg delete scripts.prepare && npm install --legacy-peer-deps --omit=dev --ignore-scripts
 COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
+CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && node dist/main.js"]

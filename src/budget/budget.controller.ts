@@ -1,6 +1,5 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { BudgetService } from './budget.service';
 
 @ApiTags('Orçamentos')
@@ -8,8 +7,6 @@ import { BudgetService } from './budget.service';
 export class BudgetController {
   constructor(private readonly service: BudgetService) {}
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
   @Get(':workOrderId')
   findOne(@Param('workOrderId') workOrderId: string) {
     return this.service.findByWorkOrder(+workOrderId);

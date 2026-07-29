@@ -35,10 +35,19 @@ export class BudgetService {
         data: { status: 'APROVADO', respondedAt: new Date() },
       });
 
-      const mpPayment = await this.mercadoPago.createPaymentLink({
-        workOrderId,
-        amount: Number(budget.totalAmount),
-      });
+      let mpPaymentId: string | undefined;
+      let mpPaymentUrl: string | undefined;
+      try {
+        const mpPayment = await this.mercadoPago.createPaymentLink({
+          workOrderId,
+          amount: Number(budget.totalAmount),
+        });
+        mpPaymentId = mpPayment.id;
+        mpPaymentUrl = mpPayment.paymentUrl;
+        this.logger.log(`Pagamento criado no MP para OS ${workOrderId}: ${mpPaymentUrl}`);
+      } catch (err) {
+        this.logger.warn(`MercadoPago indisponível para OS ${workOrderId}, continuando saga sem link de pagamento: ${err}`);
+      }
 
       await this.prisma.payment.create({
         data: {
@@ -46,14 +55,13 @@ export class BudgetService {
           workOrderId,
           amount: budget.totalAmount,
           status: 'AGUARDANDO',
-          mercadoPagoId: mpPayment.id,
-          mercadoPagoPaymentUrl: mpPayment.paymentUrl,
+          mercadoPagoId: mpPaymentId,
+          mercadoPagoPaymentUrl: mpPaymentUrl,
         },
       });
 
-      this.logger.log(`Pagamento criado no MP para OS ${workOrderId}: ${mpPayment.paymentUrl}`);
       await this.saga.publish(SagaEventType.EXECUTION_REQUESTED, workOrderId, {
-        paymentUrl: mpPayment.paymentUrl,
+        paymentUrl: mpPaymentUrl,
       });
     } else {
       await this.prisma.budget.update({

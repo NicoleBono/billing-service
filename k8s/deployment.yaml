@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-service
+  namespace: oficina
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-service
+  template:
+    metadata:
+      labels:
+        app: billing-service
+    spec:
+      serviceAccountName: billing-service
+      containers:
+        - name: billing-service
+          image: billing-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: PORT
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: AWS_REGION
+            - name: SAGA_SNS_TOPIC_ARN
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: SAGA_SNS_TOPIC_ARN
+            - name: SAGA_SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: SAGA_SQS_QUEUE_URL
+            - name: MP_WEBHOOK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-config
+                  key: MP_WEBHOOK_URL
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: billing-secret
+                  key: DATABASE_URL
+            - name: MP_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: billing-secret
+                  key: MP_ACCESS_TOKEN
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

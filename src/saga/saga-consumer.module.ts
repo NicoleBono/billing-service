@@ -7,15 +7,18 @@ import { ExecutionCompletedHandler } from './handlers/execution-completed.handle
 import { SagaPublisherModule } from './saga-publisher.module';
 import { BudgetModule } from '../budget/budget.module';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const handlers: any[] = [
-  { provide: SAGA_EVENT_HANDLER, useClass: OsCreatedHandler, multi: true },
-  { provide: SAGA_EVENT_HANDLER, useClass: BudgetApprovalDecidedHandler, multi: true },
-  { provide: SAGA_EVENT_HANDLER, useClass: ExecutionCompletedHandler, multi: true },
-];
-
 @Module({
   imports: [SagaPublisherModule, BudgetModule],
-  providers: [SagaConsumerService, ...handlers],
+  providers: [
+    OsCreatedHandler,
+    BudgetApprovalDecidedHandler,
+    ExecutionCompletedHandler,
+    {
+      provide: SAGA_EVENT_HANDLER,
+      useFactory: (h1: OsCreatedHandler, h2: BudgetApprovalDecidedHandler, h3: ExecutionCompletedHandler) => [h1, h2, h3],
+      inject: [OsCreatedHandler, BudgetApprovalDecidedHandler, ExecutionCompletedHandler],
+    },
+    SagaConsumerService,
+  ],
 })
 export class SagaConsumerModule {}
